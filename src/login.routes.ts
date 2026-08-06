@@ -71,58 +71,70 @@ router.get("/usuarios", async (req, res) => {
 
 });
 
-// PUT - Actualizar usuario
-router.put("/usuarios/:id", async (req, res) => {
+// POST - Login usuario
+router.post("/login", async (req, res) => {
 
     try {
 
-        const { id } = req.params;
-        const { nombre, correo, password, mensaje } = req.body;
+        const { correo, password } = req.body;
+
+
+        if (!correo || !password) {
+
+            return res.status(400).json({
+                mensaje: "Correo y contraseña son obligatorios"
+            });
+
+        }
+
 
         const resultado = await pool.query(
             `
-            UPDATE usuarios
-            SET nombre=$1,
-                correo=$2,
-                password=$3,
-                mensaje=$4
-            WHERE id=$5
-            RETURNING *
+            SELECT *
+            FROM usuarios
+            WHERE correo = $1
+            AND password = $2
             `,
             [
-                nombre,
                 correo,
-                password,
-                mensaje,
-                id
+                password
             ]
         );
 
 
         if (resultado.rows.length === 0) {
-            return res.status(404).json({
-                error: "Usuario no encontrado"
+
+            return res.status(401).json({
+                mensaje: "Correo o contraseña incorrectos"
             });
+
         }
 
 
         res.json({
-            mensaje: "Usuario actualizado correctamente",
+
+            mensaje: "Login correcto",
+
             usuario: resultado.rows[0]
+
         });
 
 
-    } catch(error) {
+    } catch (error) {
+
 
         console.error(error);
 
-        res.status(500).json({
-            error: "Error al actualizar usuario"
-        });
-    }
-    
 
-    
+        res.status(500).json({
+
+            mensaje: "Error del servidor"
+
+        });
+
+
+    }
+
 });
 
 // DELETE - Eliminar usuario
