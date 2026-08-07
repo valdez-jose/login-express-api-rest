@@ -5,8 +5,10 @@ import { pool } from "./database.js";
 const router = Router();
 
 
-// POST - Guardar usuario
-router.post("/login", async (req, res) => {
+// =========================
+// POST - Registrar usuario
+// =========================
+router.post("/registro", async (req, res) => {
 
     try {
 
@@ -32,7 +34,7 @@ router.post("/login", async (req, res) => {
             ]
         );
 
-        res.json({
+        res.status(201).json({
             mensaje: "Usuario guardado correctamente",
             usuario: resultado.rows[0]
         });
@@ -49,18 +51,20 @@ router.post("/login", async (req, res) => {
 });
 
 
+// =========================
 // GET - Obtener usuarios
+// =========================
 router.get("/usuarios", async (req, res) => {
 
     try {
 
         const resultado = await pool.query(
-            "SELECT * FROM usuarios"
+            "SELECT * FROM usuarios ORDER BY id"
         );
 
         res.json(resultado.rows);
 
-    } catch(error) {
+    } catch (error) {
 
         console.error(error);
 
@@ -70,74 +74,96 @@ router.get("/usuarios", async (req, res) => {
     }
 
 });
-
-// POST - Login usuario
-router.post("/login", async (req, res) => {
+// GET - Obtener un usuario por ID
+router.get("/usuarios/:id", async (req, res) => {
 
     try {
 
-        const { correo, password } = req.body;
-
-
-        if (!correo || !password) {
-
-            return res.status(400).json({
-                mensaje: "Correo y contraseña son obligatorios"
-            });
-
-        }
-
+        const { id } = req.params;
 
         const resultado = await pool.query(
             `
             SELECT *
             FROM usuarios
-            WHERE correo = $1
-            AND password = $2
+            WHERE id = $1
             `,
-            [
-                correo,
-                password
-            ]
+            [id]
         );
 
-
         if (resultado.rows.length === 0) {
-
-            return res.status(401).json({
-                mensaje: "Correo o contraseña incorrectos"
+            return res.status(404).json({
+                error: "Usuario no encontrado"
             });
-
         }
 
-
-        res.json({
-
-            mensaje: "Login correcto",
-
-            usuario: resultado.rows[0]
-
-        });
-
+        res.json(resultado.rows[0]);
 
     } catch (error) {
 
-
         console.error(error);
 
-
         res.status(500).json({
-
-            mensaje: "Error del servidor"
-
+            error: "Error al obtener usuario"
         });
-
-
     }
 
 });
 
+// =========================
+// PUT - Actualizar usuario
+// =========================
+router.put("/usuarios/:id", async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+        const { nombre, correo, password, mensaje } = req.body;
+
+        const resultado = await pool.query(
+            `
+            UPDATE usuarios
+            SET nombre=$1,
+                correo=$2,
+                password=$3,
+                mensaje=$4
+            WHERE id=$5
+            RETURNING *
+            `,
+            [
+                nombre,
+                correo,
+                password,
+                mensaje,
+                id
+            ]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                error: "Usuario no encontrado"
+            });
+        }
+
+        res.json({
+            mensaje: "Usuario actualizado correctamente",
+            usuario: resultado.rows[0]
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            error: "Error al actualizar usuario"
+        });
+    }
+
+});
+
+
+// =========================
 // DELETE - Eliminar usuario
+// =========================
 router.delete("/usuarios/:id", async (req, res) => {
 
     try {
@@ -164,7 +190,7 @@ router.delete("/usuarios/:id", async (req, res) => {
             usuario: resultado.rows[0]
         });
 
-    } catch(error) {
+    } catch (error) {
 
         console.error(error);
 
@@ -175,5 +201,55 @@ router.delete("/usuarios/:id", async (req, res) => {
 
 });
 
+
+// =========================
+// POST - Login
+// =========================
+router.post("/login", async (req, res) => {
+
+    try {
+
+        const { correo, password } = req.body;
+
+        if (!correo || !password) {
+            return res.status(400).json({
+                mensaje: "Correo y contraseña son obligatorios"
+            });
+        }
+
+        const resultado = await pool.query(
+            `
+            SELECT *
+            FROM usuarios
+            WHERE correo = $1
+            AND password = $2
+            `,
+            [
+                correo,
+                password
+            ]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(401).json({
+                mensaje: "Correo o contraseña incorrectos"
+            });
+        }
+
+        res.json({
+            mensaje: "Login correcto",
+            usuario: resultado.rows[0]
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            mensaje: "Error del servidor"
+        });
+    }
+
+});
 
 export default router;
